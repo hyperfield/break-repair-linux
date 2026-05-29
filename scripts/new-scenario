@@ -1,0 +1,68 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd -- "$SCRIPT_DIR/.." && pwd)"
+
+# shellcheck disable=SC1091
+source "$REPO_ROOT/lib/common.sh"
+
+usage() {
+  cat <<'EOF'
+usage: ./scripts/new-scenario <family> <category> <slug> [title...]
+
+example:
+  ./scripts/new-scenario rhel services sshd-bad-permissions
+  ./scripts/new-scenario rhel storage lvm-missing-pv "LVM missing PV"
+EOF
+}
+
+escape_sed_replacement() {
+  printf '%s' "$1" | sed 's/[\/&]/\\&/g'
+}
+
+[[ $# -ge 3 ]] || {
+  usage
+  exit 1
+}
+
+family="$1"
+category="$2"
+slug="$3"
+shift 3
+title="${*:-${slug//-/ }}"
+
+[[ "$slug" =~ ^[a-z0-9][a-z0-9-]*$ ]] || die "slug must match: ^[a-z0-9][a-z0-9-]*$"
+
+scenario_dir="$REPO_ROOT/scenarios/$family/$category/$slug"
+template_dir="$REPO_ROOT/templates/scenario"
+
+[[ -d "$template_dir" ]] || die "missing template directory: $template_dir"
+[[ ! -e "$scenario_dir" ]] || die "scenario already exists: $scenario_dir"
+
+mkdir -p "$scenario_dir"
+cp -R "$template_dir/." "$scenario_dir/"
+
+escaped_slug="$(escape_sed_replacement "$slug")"
+escaped_title="$(escape_sed_replacement "$title")"
+escaped_family="$(escape_sed_replacement "$family")"
+escaped_category="$(escape_sed_replacement "$category")"
+
+while IFS= read -r -d '' file; do
+  sed -i \
+    -e "s/__SCENARIO_ID__/$escaped_slug/g" \
+    -e "s/__SCENARIO_TITLE__/$escaped_title/g" \
+    -e "s/__SCENARIO_FAMILY__/$escaped_family/g" \
+    -e "s/__SCENARIO_CATEGORY__/$escaped_category/g" \
+    "$file"
+done < <(find "$scenario_dir" -type f -print0)
+
+chmod +x \
+  "$scenario_dir/break.sh" \
+  "$scenario_dir/verify-broken.sh" \
+  "$scenario_dir/verify-fixed.sh" \
+  "$scenario_dir/reset.sh"
+
+info "created scenario: $scenario_dir"
+

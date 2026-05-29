@@ -1,0 +1,30 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd -- "$SCRIPT_DIR/.." && pwd)"
+
+# shellcheck disable=SC1091
+source "$REPO_ROOT/lib/common.sh"
+
+mapfile -d '' task_files < <(find "$REPO_ROOT/tasks" -type f -name metadata.env -print0 | sort -z)
+
+if [[ "${#task_files[@]}" -eq 0 ]]; then
+  info "no tasks have been created yet"
+  exit 0
+fi
+
+printf '%-8s %-12s %-28s %s\n' "FAMILY" "CATEGORY" "ID" "TITLE"
+
+for metadata in "${task_files[@]}"; do
+  unset TASK_ID TASK_TITLE TASK_FAMILY TASK_CATEGORY
+  # shellcheck disable=SC1090
+  source "$metadata"
+  printf '%-8s %-12s %-28s %s\n' \
+    "${TASK_FAMILY:-?}" \
+    "${TASK_CATEGORY:-?}" \
+    "${TASK_ID:-?}" \
+    "${TASK_TITLE:-?}"
+done
+

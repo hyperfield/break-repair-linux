@@ -1,0 +1,328 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd -- "$SCRIPT_DIR/.." && pwd)"
+
+# shellcheck disable=SC1091
+source "$REPO_ROOT/lib/common.sh"
+
+usage() {
+  cat <<'EOF'
+usage: ./scripts/verify-exercise [options]
+
+options:
+  --random              pick a random exercise from the filtered set
+  --scenarios           include only break/repair scenarios
+  --tasks               include only setup/verification tasks
+  --all                 include both scenarios and tasks (default)
+  --family FAMILY       filter by family, for example: rhel
+  --category CATEGORY   filter by category, for example: boot
+  --id EXERCISE_ID      filter by exercise id
+  --number N            pick the Nth exercise from the filtered list
+  --state STATE         scenario verification state: fixed or broken
+  --list                print the filtered list and exit
+  --help                show this help text
+
+notes:
+  - tasks always run verify.sh
+  - scenarios default to --state fixed
+
+examples:
+  ./scripts/verify-exercise
+  ./scripts/verify-exercise --random --scenarios
+  ./scripts/verify-exercise --tasks --category boot
+  ./scripts/verify-exercise --id sshd-invalid-dropin
+  ./scripts/verify-exercise --id sshd-invalid-dropin --state broken
+EOF
+}
+
+declare -a exercise_kind=()
+declare -a exercise_family=()
+declare -a exercise_category=()
+declare -a exercise_id=()
+declare -a exercise_title=()
+declare -a exercise_dir=()
+declare -a verify_action=()
+declare -a verify_label=()
+declare -a exercise_requires_root=()
+
+include_scenarios="yes"
+include_tasks="yes"
+pick_random="no"
+list_only="no"
+family_filter=""
+category_filter=""
+id_filter=""
+number_filter=""
+scenario_state="fixed"
+
+append_exercise() {
+  exercise_kind+=("$1")
+  exercise_family+=("$2")
+  exercise_category+=("$3")
+  exercise_id+=("$4")
+  exercise_title+=("$5")
+  exercise_dir+=("$6")
+  verify_action+=("$7")
+  verify_label+=("$8")
+  exercise_requires_root+=("$9")
+}
+
+load_scenarios() {
+  local metadata dir verify_script verify_name
+  local -a metadata_files=()
+
+  mapfile -d '' metadata_files < <(find "$REPO_ROOT/scenarios" -type f -name metadata.env -print0 | sort -z)
+
+  for metadata in "${metadata_files[@]}"; do
+    unset SCENARIO_ID SCENARIO_TITLE SCENARIO_FAMILY SCENARIO_CATEGORY REQUIRES_ROOT
+    # shellcheck disable=SC1090
+    source "$metadata"
+    dir="$(dirname "$metadata")"
+
+    case "$scenario_state" in
+      fixed)
+        verify_script="$dir/verify-fixed.sh"
+        verify_name="verify-fixed.sh"
+        ;;
+      broken)
+        verify_script="$dir/verify-broken.sh"
+        verify_name="verify-broken.sh"
+        ;;
+      *)
+        die "unsupported scenario state: $scenario_state"
+        ;;
+    esac
+
+    [[ -x "$verify_script" ]] || continue
+
+    append_exercise \
+      "scenario" \
+      "${SCENARIO_FAMILY:-?}" \
+      "${SCENARIO_CATEGORY:-?}" \
+      "${SCENARIO_ID:-?}" \
+      "${SCENARIO_TITLE:-?}" \
+      "$dir" \
+      "$verify_name" \
+      "$scenario_state" \
+      "${REQUIRES_ROOT:-unknown}"
+  done
+}
+
+load_tasks() {
+  local metadata dir
+  local -a metadata_files=()
+
+  mapfile -d '' metadata_files < <(find "$REPO_ROOT/tasks" -type f -name metadata.env -print0 | sort -z)
+
+  for metadata in "${metadata_files[@]}"; do
+    unset TASK_ID TASK_TITLE TASK_FAMILY TASK_CATEGORY REQUIRES_ROOT
+    # shellcheck disable=SC1090
+    source "$metadata"
+    dir="$(dirname "$metadata")"
+
+    [[ -x "$dir/verify.sh" ]] || continue
+
+    append_exercise \
+      "task" \
+      "${TASK_FAMILY:-?}" \
+      "${TASK_CATEGORY:-?}" \
+      "${TASK_ID:-?}" \
+      "${TASK_TITLE:-?}" \
+      "$dir" \
+      "verify.sh" \
+      "result" \
+      "${REQUIRES_ROOT:-unknown}"
+  done
+}
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --random)
+      pick_random="yes"
+      shift
+      ;;
+    --scenarios)
+      include_scenarios="yes"
+      include_tasks="no"
+      shift
+      ;;
+    --tasks)
+      include_scenarios="no"
+      include_tasks="yes"
+      shift
+      ;;
+    --all)
+      include_scenarios="yes"
+      include_tasks="yes"
+      shift
+      ;;
+    --family)
+      [[ $# -ge 2 ]] || die "--family requires a value"
+      family_filter="$2"
+      shift 2
+      ;;
+    --category)
+      [[ $# -ge 2 ]] || die "--category requires a value"
+      category_filter="$2"
+      shift 2
+      ;;
+    --id)
+      [[ $# -ge 2 ]] || die "--id requires a value"
+      id_filter="$2"
+      shift 2
+      ;;
+    --number)
+      [[ $# -ge 2 ]] || die "--number requires a value"
+      number_filter="$2"
+      shift 2
+      ;;
+    --state)
+      [[ $# -ge 2 ]] || die "--state requires a value"
+      scenario_state="$2"
+      shift 2
+      ;;
+    --list)
+      list_only="yes"
+      shift
+      ;;
+    --help|-h)
+      usage
+      exit 0
+      ;;
+    *)
+      usage >&2
+      die "unknown option: $1"
+      ;;
+  esac
+done
+
+case "$scenario_state" in
+  fixed|broken)
+    ;;
+  *)
+    die "--state must be either fixed or broken"
+    ;;
+esac
+
+if [[ "$include_scenarios" == "yes" ]]; then
+  load_scenarios
+fi
+
+if [[ "$include_tasks" == "yes" ]]; then
+  load_tasks
+fi
+
+[[ "${#exercise_id[@]}" -gt 0 ]] || die "no runnable verifications were found"
+
+declare -a filtered_indices=()
+
+for idx in "${!exercise_id[@]}"; do
+  if [[ -n "$family_filter" ]] && [[ "${exercise_family[$idx]}" != "$family_filter" ]]; then
+    continue
+  fi
+
+  if [[ -n "$category_filter" ]] && [[ "${exercise_category[$idx]}" != "$category_filter" ]]; then
+    continue
+  fi
+
+  if [[ -n "$id_filter" ]] && [[ "${exercise_id[$idx]}" != "$id_filter" ]]; then
+    continue
+  fi
+
+  filtered_indices+=("$idx")
+done
+
+[[ "${#filtered_indices[@]}" -gt 0 ]] || die "no exercises matched the requested filters"
+
+print_filtered_table() {
+  local row idx
+
+  printf '%-4s %-8s %-8s %-12s %-32s %-8s %s\n' "#" "TYPE" "FAMILY" "CATEGORY" "ID" "VERIFY" "TITLE"
+
+  for row in "${!filtered_indices[@]}"; do
+    idx="${filtered_indices[$row]}"
+    printf '%-4s %-8s %-8s %-12s %-32s %-8s %s\n' \
+      "$((row + 1))" \
+      "${exercise_kind[$idx]}" \
+      "${exercise_family[$idx]}" \
+      "${exercise_category[$idx]}" \
+      "${exercise_id[$idx]}" \
+      "${verify_label[$idx]}" \
+      "${exercise_title[$idx]}"
+  done
+}
+
+if [[ "$list_only" == "yes" ]]; then
+  print_filtered_table
+  exit 0
+fi
+
+verify_index() {
+  local selected_index="$1"
+  local action_path
+
+  action_path="${exercise_dir[$selected_index]}/${verify_action[$selected_index]}"
+
+  printf '\n'
+  info "selected ${exercise_kind[$selected_index]}: ${exercise_id[$selected_index]}"
+  printf 'family: %s\n' "${exercise_family[$selected_index]}"
+  printf 'category: %s\n' "${exercise_category[$selected_index]}"
+  printf 'title: %s\n' "${exercise_title[$selected_index]}"
+  printf 'directory: %s\n' "${exercise_dir[$selected_index]}"
+  printf 'verification: %s\n' "${verify_action[$selected_index]}"
+  printf 'state: %s\n' "${verify_label[$selected_index]}"
+
+  if [[ "${exercise_requires_root[$selected_index]}" == "yes" ]] && [[ "${EUID:-$(id -u)}" -ne 0 ]]; then
+    warn "this exercise may expect root for accurate verification. Run the verifier with sudo or as root if needed."
+  fi
+
+  info "running ${verify_action[$selected_index]} for ${exercise_id[$selected_index]}"
+  "$action_path"
+}
+
+if [[ -n "$number_filter" ]]; then
+  [[ "$number_filter" =~ ^[0-9]+$ ]] || die "--number must be a positive integer"
+  [[ "$number_filter" -ge 1 ]] || die "--number must be at least 1"
+  [[ "$number_filter" -le "${#filtered_indices[@]}" ]] || die "--number exceeds the filtered list size"
+  selected_index="${filtered_indices[$((number_filter - 1))]}"
+  verify_index "$selected_index"
+  exit 0
+fi
+
+if [[ "$pick_random" == "yes" ]]; then
+  selected_index="${filtered_indices[$((RANDOM % ${#filtered_indices[@]}))]}"
+  print_filtered_table
+  verify_index "$selected_index"
+  exit 0
+fi
+
+if [[ "${#filtered_indices[@]}" -eq 1 ]]; then
+  selected_index="${filtered_indices[0]}"
+  print_filtered_table
+  verify_index "$selected_index"
+  exit 0
+fi
+
+print_filtered_table
+printf '\nEnter a number to verify an exercise, or q to quit: '
+
+if ! read -r selection; then
+  die "no selection received"
+fi
+
+case "$selection" in
+  q|Q|quit|QUIT)
+    info "canceled"
+    exit 0
+    ;;
+esac
+
+[[ "$selection" =~ ^[0-9]+$ ]] || die "selection must be a number or q"
+[[ "$selection" -ge 1 ]] || die "selection must be at least 1"
+[[ "$selection" -le "${#filtered_indices[@]}" ]] || die "selection exceeds the filtered list size"
+
+selected_index="${filtered_indices[$((selection - 1))]}"
+verify_index "$selected_index"

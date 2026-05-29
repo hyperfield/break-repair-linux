@@ -1,0 +1,11 @@
+*.bak
+*.log
+*.swp
+*.tmp
+.DS_Store
+.idea/
+.vscode/
+artifacts/
+out/
+tmp/
+

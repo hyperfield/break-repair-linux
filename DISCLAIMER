@@ -1,0 +1,31 @@
+# Disclaimer
+
+This repository is a destructive training lab.
+
+The scripts in this repo may intentionally:
+
+- break boot configuration
+- modify `/etc/fstab`
+- rebuild initramfs images
+- change kernel arguments
+- create or remove users, groups, mounts, loop devices, and systemd units
+- alter networking, storage, permissions, package, and SELinux state
+
+Use it only on disposable systems that you are prepared to restore from a VM
+snapshot or discard entirely.
+
+No warranty is provided that:
+
+- an exercise is safe on your particular environment
+- a reset or cleanup script will fully restore the original machine state
+- a failed or interrupted run will leave the system bootable or recoverable
+
+Recommended practice:
+
+1. use a dedicated lab VM
+2. create a clean snapshot before each session
+3. run one exercise at a time
+4. prefer snapshot restore over trusting a partially modified system
+
+If you are not comfortable recovering a broken Linux VM, do not run these
+scripts on anything important.

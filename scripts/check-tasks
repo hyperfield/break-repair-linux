@@ -1,0 +1,58 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd -- "$SCRIPT_DIR/.." && pwd)"
+
+# shellcheck disable=SC1091
+source "$REPO_ROOT/lib/common.sh"
+
+required_files=(
+  metadata.env
+  prompt.md
+  verify.sh
+  hints.md
+  solution.md
+)
+
+script_files=(
+  prepare.sh
+  verify.sh
+  cleanup.sh
+)
+
+failures=0
+count=0
+
+while IFS= read -r -d '' metadata; do
+  task_dir="$(dirname "$metadata")"
+  count=$((count + 1))
+
+  for file in "${required_files[@]}"; do
+    [[ -f "$task_dir/$file" ]] || {
+      warn "$task_dir is missing $file"
+      failures=$((failures + 1))
+    }
+  done
+
+  for file in "${script_files[@]}"; do
+    [[ -f "$task_dir/$file" ]] || continue
+    [[ -x "$task_dir/$file" ]] || {
+      warn "$task_dir/$file is not executable"
+      failures=$((failures + 1))
+    }
+  done
+done < <(find "$REPO_ROOT/tasks" -type f -name metadata.env -print0 | sort -z)
+
+if [[ "$count" -eq 0 ]]; then
+  info "no tasks found yet"
+  exit 0
+fi
+
+if [[ "$failures" -gt 0 ]]; then
+  die "task check failed with $failures problem(s) across $count task(s)"
+fi
+
+info "checked $count task(s); no structural problems found"
+

@@ -1,0 +1,67 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd -- "$SCRIPT_DIR/.." && pwd)"
+
+# shellcheck disable=SC1091
+source "$REPO_ROOT/lib/common.sh"
+
+usage() {
+  cat <<'EOF'
+usage: ./scripts/new-task <family> <category> <slug> [title...]
+
+example:
+  ./scripts/new-task rhel networking static-ip-with-dns
+  ./scripts/new-task rhel storage create-xfs-on-lvm "Create XFS on LVM"
+EOF
+}
+
+escape_sed_replacement() {
+  printf '%s' "$1" | sed 's/[\/&]/\\&/g'
+}
+
+[[ $# -ge 3 ]] || {
+  usage
+  exit 1
+}
+
+family="$1"
+category="$2"
+slug="$3"
+shift 3
+title="${*:-${slug//-/ }}"
+
+[[ "$slug" =~ ^[a-z0-9][a-z0-9-]*$ ]] || die "slug must match: ^[a-z0-9][a-z0-9-]*$"
+
+task_dir="$REPO_ROOT/tasks/$family/$category/$slug"
+template_dir="$REPO_ROOT/templates/task"
+
+[[ -d "$template_dir" ]] || die "missing template directory: $template_dir"
+[[ ! -e "$task_dir" ]] || die "task already exists: $task_dir"
+
+mkdir -p "$task_dir"
+cp -R "$template_dir/." "$task_dir/"
+
+escaped_slug="$(escape_sed_replacement "$slug")"
+escaped_title="$(escape_sed_replacement "$title")"
+escaped_family="$(escape_sed_replacement "$family")"
+escaped_category="$(escape_sed_replacement "$category")"
+
+while IFS= read -r -d '' file; do
+  sed -i \
+    -e "s/__TASK_ID__/$escaped_slug/g" \
+    -e "s/__TASK_TITLE__/$escaped_title/g" \
+    -e "s/__TASK_FAMILY__/$escaped_family/g" \
+    -e "s/__TASK_CATEGORY__/$escaped_category/g" \
+    "$file"
+done < <(find "$task_dir" -type f -print0)
+
+chmod +x \
+  "$task_dir/prepare.sh" \
+  "$task_dir/verify.sh" \
+  "$task_dir/cleanup.sh"
+
+info "created task: $task_dir"
+

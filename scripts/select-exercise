@@ -1,0 +1,300 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd -- "$SCRIPT_DIR/.." && pwd)"
+
+# shellcheck disable=SC1091
+source "$REPO_ROOT/lib/common.sh"
+
+usage() {
+  cat <<'EOF'
+usage: ./scripts/select-exercise [options]
+
+options:
+  --random              pick a random exercise from the filtered set
+  --scenarios           include only break/repair scenarios
+  --tasks               include only setup/verification tasks
+  --all                 include both scenarios and tasks (default)
+  --family FAMILY       filter by family, for example: rhel
+  --category CATEGORY   filter by category, for example: boot
+  --id EXERCISE_ID      filter by exercise id
+  --number N            pick the Nth exercise from the filtered list
+  --list                print the filtered list and exit
+  --help                show this help text
+
+examples:
+  ./scripts/select-exercise
+  ./scripts/select-exercise --random --scenarios
+  ./scripts/select-exercise --tasks --category boot
+  ./scripts/select-exercise --id sshd-invalid-dropin
+EOF
+}
+
+declare -a exercise_kind=()
+declare -a exercise_family=()
+declare -a exercise_category=()
+declare -a exercise_id=()
+declare -a exercise_title=()
+declare -a exercise_dir=()
+declare -a exercise_action=()
+declare -a exercise_requires_root=()
+
+include_scenarios="yes"
+include_tasks="yes"
+pick_random="no"
+list_only="no"
+family_filter=""
+category_filter=""
+id_filter=""
+number_filter=""
+
+append_exercise() {
+  exercise_kind+=("$1")
+  exercise_family+=("$2")
+  exercise_category+=("$3")
+  exercise_id+=("$4")
+  exercise_title+=("$5")
+  exercise_dir+=("$6")
+  exercise_action+=("$7")
+  exercise_requires_root+=("$8")
+}
+
+load_scenarios() {
+  local metadata dir
+  local -a metadata_files=()
+
+  mapfile -d '' metadata_files < <(find "$REPO_ROOT/scenarios" -type f -name metadata.env -print0 | sort -z)
+
+  for metadata in "${metadata_files[@]}"; do
+    unset SCENARIO_ID SCENARIO_TITLE SCENARIO_FAMILY SCENARIO_CATEGORY REQUIRES_ROOT
+    # shellcheck disable=SC1090
+    source "$metadata"
+    dir="$(dirname "$metadata")"
+
+    [[ -x "$dir/break.sh" ]] || continue
+
+    append_exercise \
+      "scenario" \
+      "${SCENARIO_FAMILY:-?}" \
+      "${SCENARIO_CATEGORY:-?}" \
+      "${SCENARIO_ID:-?}" \
+      "${SCENARIO_TITLE:-?}" \
+      "$dir" \
+      "break.sh" \
+      "${REQUIRES_ROOT:-unknown}"
+  done
+}
+
+load_tasks() {
+  local metadata dir
+  local -a metadata_files=()
+
+  mapfile -d '' metadata_files < <(find "$REPO_ROOT/tasks" -type f -name metadata.env -print0 | sort -z)
+
+  for metadata in "${metadata_files[@]}"; do
+    unset TASK_ID TASK_TITLE TASK_FAMILY TASK_CATEGORY REQUIRES_ROOT
+    # shellcheck disable=SC1090
+    source "$metadata"
+    dir="$(dirname "$metadata")"
+
+    [[ -x "$dir/prepare.sh" ]] || continue
+
+    append_exercise \
+      "task" \
+      "${TASK_FAMILY:-?}" \
+      "${TASK_CATEGORY:-?}" \
+      "${TASK_ID:-?}" \
+      "${TASK_TITLE:-?}" \
+      "$dir" \
+      "prepare.sh" \
+      "${REQUIRES_ROOT:-unknown}"
+  done
+}
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --random)
+      pick_random="yes"
+      shift
+      ;;
+    --scenarios)
+      include_scenarios="yes"
+      include_tasks="no"
+      shift
+      ;;
+    --tasks)
+      include_scenarios="no"
+      include_tasks="yes"
+      shift
+      ;;
+    --all)
+      include_scenarios="yes"
+      include_tasks="yes"
+      shift
+      ;;
+    --family)
+      [[ $# -ge 2 ]] || die "--family requires a value"
+      family_filter="$2"
+      shift 2
+      ;;
+    --category)
+      [[ $# -ge 2 ]] || die "--category requires a value"
+      category_filter="$2"
+      shift 2
+      ;;
+    --id)
+      [[ $# -ge 2 ]] || die "--id requires a value"
+      id_filter="$2"
+      shift 2
+      ;;
+    --number)
+      [[ $# -ge 2 ]] || die "--number requires a value"
+      number_filter="$2"
+      shift 2
+      ;;
+    --list)
+      list_only="yes"
+      shift
+      ;;
+    --help|-h)
+      usage
+      exit 0
+      ;;
+    *)
+      usage >&2
+      die "unknown option: $1"
+      ;;
+  esac
+done
+
+if [[ "$include_scenarios" == "yes" ]]; then
+  load_scenarios
+fi
+
+if [[ "$include_tasks" == "yes" ]]; then
+  load_tasks
+fi
+
+[[ "${#exercise_id[@]}" -gt 0 ]] || die "no runnable exercises were found"
+
+declare -a filtered_indices=()
+
+for idx in "${!exercise_id[@]}"; do
+  if [[ -n "$family_filter" ]] && [[ "${exercise_family[$idx]}" != "$family_filter" ]]; then
+    continue
+  fi
+
+  if [[ -n "$category_filter" ]] && [[ "${exercise_category[$idx]}" != "$category_filter" ]]; then
+    continue
+  fi
+
+  if [[ -n "$id_filter" ]] && [[ "${exercise_id[$idx]}" != "$id_filter" ]]; then
+    continue
+  fi
+
+  filtered_indices+=("$idx")
+done
+
+[[ "${#filtered_indices[@]}" -gt 0 ]] || die "no exercises matched the requested filters"
+
+print_filtered_table() {
+  local row idx
+
+  printf '%-4s %-8s %-8s %-12s %-32s %s\n' "#" "TYPE" "FAMILY" "CATEGORY" "ID" "TITLE"
+
+  for row in "${!filtered_indices[@]}"; do
+    idx="${filtered_indices[$row]}"
+    printf '%-4s %-8s %-8s %-12s %-32s %s\n' \
+      "$((row + 1))" \
+      "${exercise_kind[$idx]}" \
+      "${exercise_family[$idx]}" \
+      "${exercise_category[$idx]}" \
+      "${exercise_id[$idx]}" \
+      "${exercise_title[$idx]}"
+  done
+}
+
+if [[ "$list_only" == "yes" ]]; then
+  print_filtered_table
+  exit 0
+fi
+
+select_index() {
+  local selected_index="$1"
+  local action_path
+
+  action_path="${exercise_dir[$selected_index]}/${exercise_action[$selected_index]}"
+
+  printf '\n'
+  info "selected ${exercise_kind[$selected_index]}: ${exercise_id[$selected_index]}"
+  printf 'family: %s\n' "${exercise_family[$selected_index]}"
+  printf 'category: %s\n' "${exercise_category[$selected_index]}"
+  printf 'title: %s\n' "${exercise_title[$selected_index]}"
+  printf 'directory: %s\n' "${exercise_dir[$selected_index]}"
+  printf 'action: %s --force\n' "$action_path"
+
+  if [[ "${exercise_requires_root[$selected_index]}" == "yes" ]] && [[ "${EUID:-$(id -u)}" -ne 0 ]]; then
+    warn "this exercise expects root. Run the selector with sudo or as root if you want it to succeed."
+  fi
+
+  printf '\nType BREAK to execute, or anything else to cancel: '
+
+  if ! read -r confirmation; then
+    info "no confirmation received; canceled"
+    exit 0
+  fi
+
+  if [[ "$confirmation" != "BREAK" ]]; then
+    info "canceled"
+    exit 0
+  fi
+
+  info "running ${exercise_action[$selected_index]} for ${exercise_id[$selected_index]}"
+  "$action_path" --force
+}
+
+if [[ -n "$number_filter" ]]; then
+  [[ "$number_filter" =~ ^[0-9]+$ ]] || die "--number must be a positive integer"
+  [[ "$number_filter" -ge 1 ]] || die "--number must be at least 1"
+  [[ "$number_filter" -le "${#filtered_indices[@]}" ]] || die "--number exceeds the filtered list size"
+  selected_index="${filtered_indices[$((number_filter - 1))]}"
+  select_index "$selected_index"
+  exit 0
+fi
+
+if [[ "$pick_random" == "yes" ]]; then
+  selected_index="${filtered_indices[$((RANDOM % ${#filtered_indices[@]}))]}"
+  print_filtered_table
+  select_index "$selected_index"
+  exit 0
+fi
+
+if [[ "${#filtered_indices[@]}" -eq 1 ]]; then
+  selected_index="${filtered_indices[0]}"
+  print_filtered_table
+  select_index "$selected_index"
+  exit 0
+fi
+
+print_filtered_table
+printf '\nEnter a number to select an exercise, or q to quit: '
+
+if ! read -r selection; then
+  die "no selection received"
+fi
+
+case "$selection" in
+  q|Q|quit|QUIT)
+    info "canceled"
+    exit 0
+    ;;
+esac
+
+[[ "$selection" =~ ^[0-9]+$ ]] || die "selection must be a number or q"
+[[ "$selection" -ge 1 ]] || die "selection must be at least 1"
+[[ "$selection" -le "${#filtered_indices[@]}" ]] || die "selection exceeds the filtered list size"
+
+selected_index="${filtered_indices[$((selection - 1))]}"
+select_index "$selected_index"

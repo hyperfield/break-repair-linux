@@ -1,0 +1,32 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd -- "$SCRIPT_DIR/../../../.." && pwd)"
+
+# shellcheck disable=SC1091
+source "$REPO_ROOT/lib/common.sh"
+# shellcheck disable=SC1091
+source "$REPO_ROOT/lib/platform.sh"
+# shellcheck disable=SC1091
+source "$REPO_ROOT/lib/boot.sh"
+# shellcheck disable=SC1091
+source "$SCRIPT_DIR/metadata.env"
+
+require_root
+require_os_family "$SCENARIO_FAMILY"
+require_force_arg "${1:-}"
+
+STATE_DIR="$(exercise_state_dir "$SCENARIO_ID")"
+
+info "resetting scenario: $SCENARIO_ID"
+
+if [[ -f "$STATE_DIR/original-crashkernel-arg-present" ]] && [[ "$(cat "$STATE_DIR/original-crashkernel-arg-present")" == "yes" ]]; then
+  add_kernel_arg_all "$BOOT_CRASHKERNEL_ARG"
+else
+  remove_kernel_arg_all "$BOOT_CRASHKERNEL_ARG" >/dev/null 2>&1 || true
+fi
+
+clear_exercise_state_dir "$SCENARIO_ID"
+info "scenario reset complete"

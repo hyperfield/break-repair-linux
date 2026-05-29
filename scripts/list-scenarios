@@ -1,0 +1,30 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd -- "$SCRIPT_DIR/.." && pwd)"
+
+# shellcheck disable=SC1091
+source "$REPO_ROOT/lib/common.sh"
+
+mapfile -d '' scenario_files < <(find "$REPO_ROOT/scenarios" -type f -name metadata.env -print0 | sort -z)
+
+if [[ "${#scenario_files[@]}" -eq 0 ]]; then
+  info "no scenarios have been created yet"
+  exit 0
+fi
+
+printf '%-8s %-12s %-28s %s\n' "FAMILY" "CATEGORY" "ID" "TITLE"
+
+for metadata in "${scenario_files[@]}"; do
+  unset SCENARIO_ID SCENARIO_TITLE SCENARIO_FAMILY SCENARIO_CATEGORY
+  # shellcheck disable=SC1090
+  source "$metadata"
+  printf '%-8s %-12s %-28s %s\n' \
+    "${SCENARIO_FAMILY:-?}" \
+    "${SCENARIO_CATEGORY:-?}" \
+    "${SCENARIO_ID:-?}" \
+    "${SCENARIO_TITLE:-?}"
+done
+
