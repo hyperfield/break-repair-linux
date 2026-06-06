@@ -112,7 +112,6 @@ Setup/verification tasks contain:
 
 Authoring notes live in:
 
-- [AGENTS.md](/home/inte/projects/break-repair-linux/AGENTS.md)
 - [docs/using-the-lab.md](/home/inte/projects/break-repair-linux/docs/using-the-lab.md)
 - [docs/scenario-format.md](/home/inte/projects/break-repair-linux/docs/scenario-format.md)
 - [docs/task-format.md](/home/inte/projects/break-repair-linux/docs/task-format.md)
