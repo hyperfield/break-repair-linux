@@ -18,11 +18,30 @@ config, and initramfs images.
 7. `tasks/rhel/boot/rebuild-initramfs-with-loop-driver`
 8. `scenarios/rhel/boot/initramfs-omits-loop-driver`
 
+## Selector Map
+
+| Order | Type | Category | Title | `--id` value |
+| --- | --- | --- | --- | --- |
+| 1 | task | boot | `Set Default Multi-User Target` | `set-default-multi-user-target` |
+| 2 | task | boot | `Add Serial Console Kernel Arg` | `add-serial-console-kernel-arg` |
+| 3 | task | boot | `Add Crashkernel Reserve` | `add-crashkernel-reserve` |
+| 4 | task | boot | `Create Boot-Safe Labfstab Mount` | `create-boot-safe-labfstab-mount` |
+| 5 | scenario | storage | `Fstab Loopback UUID Mismatch` | `fstab-loopback-uuid-mismatch` |
+| 6 | scenario | boot | `Boot Wait Bad Labfstab Entry` | `boot-wait-bad-labfstab-entry` |
+| 7 | task | boot | `Rebuild Initramfs With Loop Driver` | `rebuild-initramfs-with-loop-driver` |
+| 8 | scenario | boot | `Initramfs Omits Loop Driver` | `initramfs-omits-loop-driver` |
+
 ## 1. Set Default Multi-User Target
 
 Why first:
 - It introduces the idea of saved next-boot state without involving storage,
   kernel arguments, or initramfs.
+
+To launch the lab, run:
+
+```bash
+sudo ./scripts/select-exercise --tasks --id set-default-multi-user-target
+```
 
 After the lab, run:
 
@@ -44,6 +63,12 @@ Why now:
 - It builds on the same "saved for the next boot" idea, but moves from
   `systemd` target state to persistent kernel command-line state.
 
+To launch the lab, run:
+
+```bash
+sudo ./scripts/select-exercise --tasks --id add-serial-console-kernel-arg
+```
+
 After the lab, run:
 
 ```bash
@@ -62,6 +87,12 @@ Look for:
 Why now:
 - It reinforces the same bootloader skill with a more ops-oriented kernel
   parameter.
+
+To launch the lab, run:
+
+```bash
+sudo ./scripts/select-exercise --tasks --id add-crashkernel-reserve
+```
 
 After the lab, run:
 
@@ -83,6 +114,12 @@ Why now:
 - It also introduces the idea that storage configuration can affect boot
   reliability.
 
+To launch the lab, run:
+
+```bash
+sudo ./scripts/select-exercise --tasks --id create-boot-safe-labfstab-mount
+```
+
 After the lab, run:
 
 ```bash
@@ -103,6 +140,12 @@ Why now:
 - It reuses the same loop-backed storage idea, but in repair mode instead of
   create-and-configure mode.
 
+To launch the lab, run:
+
+```bash
+sudo ./scripts/select-exercise --scenarios --id fstab-loopback-uuid-mismatch
+```
+
 After the lab, run:
 
 ```bash
@@ -121,6 +164,12 @@ Look for:
 Why now:
 - It connects loop-backed filesystems directly to boot safety and boot delay
   behavior.
+
+To launch the lab, run:
+
+```bash
+sudo ./scripts/select-exercise --scenarios --id boot-wait-bad-labfstab-entry
+```
 
 After the lab, run:
 
@@ -144,6 +193,12 @@ Why now:
 - Now you can focus on the difference between a saved dracut config file and
   the actual built initramfs image.
 
+To launch the lab, run:
+
+```bash
+sudo ./scripts/select-exercise --tasks --id rebuild-initramfs-with-loop-driver
+```
+
 After the lab, run:
 
 ```bash
@@ -163,6 +218,12 @@ Look for:
 Why last:
 - It is the same concept as the previous lab, but now you have to diagnose and
   repair a broken dracut configuration.
+
+To launch the lab, run:
+
+```bash
+sudo ./scripts/select-exercise --scenarios --id initramfs-omits-loop-driver
+```
 
 After the lab, run:
 
