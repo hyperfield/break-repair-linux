@@ -45,8 +45,10 @@ SNAPSHOT_RECOMMENDED="yes"
 ## Authoring Guidelines
 
 - Write the task statement so the learner knows the target state, not the steps.
+- Include exact values the learner could not reasonably infer from the starting
+  state.
 - Keep verification deterministic and machine-checkable.
 - Use `--force` for prep or cleanup steps that change the host materially.
 - Prefer one clear objective per task.
 - Keep hints short and solution-focused rather than exam-style trickery.
-
+- Do not hide required target values only in `solution.md` or `verify.sh`.
