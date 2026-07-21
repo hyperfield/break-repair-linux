@@ -32,3 +32,4 @@ fi
 
 remove_kernel_arg_all "$BOOT_SERIAL_ARG" >/dev/null 2>&1 || true
 info "serial console kernel argument is now missing"
+info "normal VGA or graphical boots may still look healthy; this fault affects serial-console access"

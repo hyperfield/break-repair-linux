@@ -30,3 +30,4 @@ nmcli connection modify lab-broken connection.autoconnect yes >/dev/null
 nmcli connection up lab-broken >/dev/null 2>&1 || true
 
 info "dummy profile now has the wrong IPv4 settings"
+info "the host's real network connection should remain operational; repair the lab-broken dummy profile"

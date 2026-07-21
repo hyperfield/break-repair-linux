@@ -28,17 +28,17 @@ systems.
 | Category | Slug | Fault |
 | --- | --- | --- |
 | boot | `default-target-set-to-rescue` | rescue target saved as default boot target |
-| boot | `missing-serial-console-kernel-arg` | required serial console arg removed |
+| boot | `missing-serial-console-kernel-arg` | serial-console kernel arg removed; local boots may still appear healthy |
 | boot | `missing-crashkernel-kernel-arg` | required crashkernel arg removed |
 | boot | `initramfs-omits-loop-driver` | dracut config omits a needed module |
-| boot | `boot-wait-bad-labfstab-entry` | boot-sensitive `fstab` entry is unsafe and wrong |
+| boot | `boot-wait-bad-labfstab-entry` | noncritical `fstab` mount has wrong UUID and unsafe boot behavior |
 | services | `sshd-invalid-dropin` | invalid sshd config fragment |
 | identity | `sudoers-dropin-syntax-error` | malformed sudoers policy |
 | permissions | `wrong-home-owner-and-mode` | broken home directory ownership |
 | systemd | `broken-lab-api-unit` | bad ExecStart in a custom service |
 | storage | `fstab-loopback-uuid-mismatch` | wrong UUID in `/etc/fstab` |
 | security | `selinux-label-drift` | live labels differ from persistent rule |
-| networking | `broken-dummy-profile` | wrong NetworkManager profile values |
+| networking | `broken-dummy-profile` | wrong values on a contained NetworkManager dummy profile |
 | networking | `bad-repo-hosts-entry` | incorrect static hostname mapping |
 | identity | `expired-backup-user` | expired local account |
 | systemd | `masked-cache-clean-timer` | masked timer unit |

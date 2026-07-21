@@ -24,7 +24,7 @@ info "applying scenario: $SCENARIO_ID"
 
 "$SCRIPT_DIR/reset.sh" --force >/dev/null 2>&1 || true
 
-truncate -s 256M "$IMAGE_FILE"
+truncate -s 384M "$IMAGE_FILE"
 loopdev="$(losetup -f --show "$IMAGE_FILE")"
 wipefs -a "$loopdev" >/dev/null 2>&1 || true
 mkfs.xfs -f "$loopdev" >/dev/null
@@ -33,4 +33,4 @@ mkdir -p "$MOUNT_POINT"
 printf 'UUID=%s %s xfs defaults 0 0\n' "$BAD_UUID" "$MOUNT_POINT" >> /etc/fstab
 umount "$MOUNT_POINT" >/dev/null 2>&1 || true
 
-info "bad boot-sensitive fstab entry created for /mnt/bootrepair"
+info "unsafe fstab entry created for the noncritical /mnt/bootrepair mount"
