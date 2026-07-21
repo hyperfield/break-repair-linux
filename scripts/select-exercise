@@ -224,8 +224,10 @@ fi
 select_index() {
   local selected_index="$1"
   local action_path
+  local prompt_path
 
   action_path="${exercise_dir[$selected_index]}/${exercise_action[$selected_index]}"
+  prompt_path="${exercise_dir[$selected_index]}/prompt.md"
 
   printf '\n'
   info "selected ${exercise_kind[$selected_index]}: ${exercise_id[$selected_index]}"
@@ -233,6 +235,7 @@ select_index() {
   printf 'category: %s\n' "${exercise_category[$selected_index]}"
   printf 'title: %s\n' "${exercise_title[$selected_index]}"
   printf 'directory: %s\n' "${exercise_dir[$selected_index]}"
+  [[ -f "$prompt_path" ]] && printf 'prompt: %s\n' "$prompt_path"
   printf 'action: %s --force\n' "$action_path"
 
   if [[ "${exercise_requires_root[$selected_index]}" == "yes" ]] && [[ "${EUID:-$(id -u)}" -ne 0 ]]; then
@@ -253,6 +256,13 @@ select_index() {
 
   info "running ${exercise_action[$selected_index]} for ${exercise_id[$selected_index]}"
   "$action_path" --force
+
+  if [[ -f "$prompt_path" ]]; then
+    printf '\n'
+    info "learner prompt"
+    printf '\n'
+    sed -n '1,220p' "$prompt_path"
+  fi
 }
 
 if [[ -n "$number_filter" ]]; then

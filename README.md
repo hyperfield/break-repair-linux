@@ -14,9 +14,10 @@ The intended workflow is simple:
 1. Start from a clean VM snapshot.
 2. Choose either a scenario or a task.
 3. Apply the exercise's starting state with `break.sh` or `prepare.sh`.
-4. Do the repair or the requested setup manually.
-5. Use the verification script to confirm the result.
-6. Revert to the snapshot or run cleanup if the exercise provides it.
+4. Read `prompt.md` for the learner-facing ticket or target state.
+5. Do the repair or the requested setup manually.
+6. Use the verification script to confirm the result.
+7. Revert to the snapshot or run cleanup if the exercise provides it.
 
 ## Start Here
 
@@ -93,6 +94,7 @@ tasks/rhel/networking/static-ip-with-dns/
 Break/repair scenarios contain:
 
 - `metadata.env`: basic metadata for tooling.
+- `prompt.md`: the learner-facing incident ticket and target state.
 - `break.sh`: applies the fault. This should normally require `--force`.
 - `verify-broken.sh`: exits `0` when the fault is present.
 - `verify-fixed.sh`: exits `0` when the machine has been repaired.

@@ -84,6 +84,7 @@ scenarios/<family>/<category>/<slug>/
 
 They deliberately put the system into a broken state. Typical files:
 
+- `prompt.md`
 - `break.sh`
 - `verify-broken.sh`
 - `verify-fixed.sh`
@@ -95,10 +96,11 @@ Typical workflow:
 
 1. start from a clean snapshot
 2. run `break.sh`
-3. confirm the system is actually broken with `verify-broken.sh`
-4. repair the system manually
-5. confirm the repair with `verify-fixed.sh`
-6. restore the snapshot or run `reset.sh`
+3. read `prompt.md`
+4. confirm the system is actually broken with `verify-broken.sh`
+5. repair the system manually
+6. confirm the repair with `verify-fixed.sh`
+7. restore the snapshot or run `reset.sh`
 
 ### Setup / Verification Tasks
 
@@ -145,7 +147,9 @@ Useful variations:
 ```
 
 `select-exercise` will show the matching exercise and then ask you to type
-`BREAK` before it runs the associated `break.sh` or `prepare.sh --force`.
+`BREAK` before it runs the associated `break.sh` or `prepare.sh --force`. If
+the exercise has a `prompt.md`, the selector prints it after the starting state
+has been applied.
 
 ### Verify an Exercise
 
@@ -179,6 +183,7 @@ If you want to inspect everything yourself instead of using the selectors:
 ```bash
 cd scenarios/rhel/services/sshd-invalid-dropin
 sudo ./break.sh --force
+cat prompt.md
 ./verify-broken.sh
 # repair manually
 ./verify-fixed.sh

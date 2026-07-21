@@ -9,6 +9,7 @@ scenarios/<family>/<category>/<slug>/
 ## Required Files
 
 - `metadata.env`
+- `prompt.md`
 - `break.sh`
 - `verify-broken.sh`
 - `verify-fixed.sh`
@@ -41,6 +42,20 @@ SNAPSHOT_RECOMMENDED="yes"
 - `verify-fixed.sh` should exit `0` only when the system is healthy again.
 - `reset.sh` should return the machine to a known-good state when implemented.
 
+## `prompt.md`
+
+`prompt.md` is the learner-facing ticket. It should provide enough information
+to make the scenario fair without reading `solution.md` or verifier scripts.
+
+Include:
+
+- the symptom or operational request
+- the required target state
+- exact values the learner could not reasonably infer from the broken system
+
+Avoid putting the repair commands in `prompt.md`; those belong in
+`solution.md`.
+
 ## Authoring Guidelines
 
 - Require `--force` for destructive operations.
@@ -49,6 +64,8 @@ SNAPSHOT_RECOMMENDED="yes"
 - Prefer backing up files before modifying them.
 - Keep one scenario focused on one main idea.
 - Avoid hidden side effects unrelated to the learning objective.
+- Do not hide required target values only in `solution.md` or
+  `verify-fixed.sh`.
 
 ## Categories
 
@@ -67,4 +84,3 @@ The current RHEL layout is grouped by broad admin domains:
 
 Use the closest category now. If the taxonomy needs to evolve later, move the
 scenario directory rather than changing its internal contract.
-

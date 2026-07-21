@@ -10,6 +10,7 @@ source "$REPO_ROOT/lib/common.sh"
 
 required_files=(
   metadata.env
+  prompt.md
   break.sh
   verify-broken.sh
   verify-fixed.sh
@@ -57,4 +58,3 @@ if [[ "$failures" -gt 0 ]]; then
 fi
 
 info "checked $count scenario(s); no structural problems found"
-
