@@ -23,7 +23,7 @@ info "preparing task: $TASK_ID"
 
 "$SCRIPT_DIR/cleanup.sh" --force >/dev/null 2>&1 || true
 
-truncate -s 256M "$IMAGE_FILE"
+truncate -s 384M "$IMAGE_FILE"
 loopdev="$(losetup -f --show "$IMAGE_FILE")"
 wipefs -a "$loopdev" >/dev/null 2>&1 || true
 mkfs.xfs -f "$loopdev" >/dev/null

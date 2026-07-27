@@ -23,7 +23,7 @@ require_cmd findmnt
 lvs labvg/lvlogs >/dev/null 2>&1 || die "logical volume labvg/lvlogs does not exist"
 
 lv_size="$(lvs --noheadings -o lv_size --units m --nosuffix labvg/lvlogs | tr -d ' ')"
-[[ "${lv_size%.*}" == "96" ]] || die "logical volume size is not 96 MiB"
+[[ "${lv_size%.*}" == "384" ]] || die "logical volume size is not 384 MiB"
 [[ "$(blkid -o value -s TYPE /dev/labvg/lvlogs)" == "xfs" ]] || die "filesystem type is not XFS"
 
 mount_source="$(findmnt -n -o SOURCE /mnt/lvlogs)"
