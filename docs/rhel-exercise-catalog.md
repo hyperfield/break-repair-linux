@@ -1,6 +1,6 @@
 # RH-Compatible Exercise Catalog
 
-This first content set adds 30 exercises for Rocky Linux, RHEL, and similar
+This first content set adds 35 exercises for Rocky Linux, RHEL, and similar
 systems.
 
 ## Tasks
@@ -33,14 +33,19 @@ systems.
 | boot | `initramfs-omits-loop-driver` | dracut config omits a needed module |
 | boot | `boot-wait-bad-labfstab-entry` | noncritical `fstab` mount has wrong UUID and unsafe boot behavior |
 | services | `sshd-invalid-dropin` | invalid sshd config fragment |
+| services | `firewalld-missing-lab-port` | required firewalld port is missing |
+| services | `cron-job-wrong-user` | `/etc/cron.d` job names a nonexistent user |
 | identity | `sudoers-dropin-syntax-error` | malformed sudoers policy |
 | permissions | `wrong-home-owner-and-mode` | broken home directory ownership |
+| permissions | `missing-sticky-bit-dropbox` | shared writable directory lacks sticky bit |
 | systemd | `broken-lab-api-unit` | bad ExecStart in a custom service |
 | storage | `fstab-loopback-uuid-mismatch` | wrong UUID in `/etc/fstab` |
 | security | `selinux-label-drift` | live labels differ from persistent rule |
 | networking | `broken-dummy-profile` | wrong values on a contained NetworkManager dummy profile |
 | networking | `bad-repo-hosts-entry` | incorrect static hostname mapping |
 | identity | `expired-backup-user` | expired local account |
+| identity | `locked-support-user` | local support account password is locked |
+| packages | `enabled-broken-lab-repo` | unavailable lab repo is enabled |
 | systemd | `masked-cache-clean-timer` | masked timer unit |
 
 ## Notes
@@ -52,4 +57,6 @@ systems.
 - SELinux exercises assume SELinux is not disabled and that `semanage` is
   available.
 - NetworkManager exercises assume the host uses NetworkManager.
+- Firewalld exercises assume `firewall-cmd` is installed and firewalld is
+  running.
 - Some boot exercises assume `grubby`, `dracut`, and `lsinitrd` are installed.
